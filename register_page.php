@@ -32,14 +32,17 @@ $message="An error occurred during registration.";
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="style.css">
     <title>Job Portal</title>
 </head>
 <body>
+    <div class="container">
     <h2>Sign up</h2>
     <p style="color:red;"><?php echo $message;?></p>
     <form action="register_page.php" method="POST">
     <label for="email">Email: </label><br>
-    <input type = "email" id="email" name="email" required><br><br>
+    <input type = "email" id="email" name="email" value="<?php echo htmlspecialchars($email ?? ''); ?>" required><br><br>
+
 
     <label for="password">Password:</label><br>
     <input type="password" id="password" name="password" required<br><br>
