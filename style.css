@@ -9,28 +9,35 @@
 	--border-radius: 10px;
 }
 
-
 body {
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-	background-color: var(--background-color);
+	background-color: #f4f7fc; /* Slightly grayish so the white containers pop */
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	min-height: 100vh;
 	margin: 0;
+	padding: 20px;
+	box-sizing: border-box;
 }
 
-
+/* Container Logic */
 .container {
 	background-color: var(--background-color);
 	padding: 40px;
 	border-radius: var(--border-radius);
 	box-shadow: 0 10px 20px var(--shadow-color);
 	width: 100%;
-	max-width: 380px;
+	max-width: 380px; /* Default for Login */
 	text-align: center;
 	border: 1px solid var(--primary-light);
 	transition: all 0.3s ease;
+}
+
+/* NEW: Use this class in apply.php to make the container wider */
+.container-large {
+	max-width: 900px;
+	text-align: left; /* Job form looks better left-aligned */
 }
 
 h2 {
@@ -43,39 +50,57 @@ h2 {
 	padding-bottom: 5px;
 }
 
-
-label {
-	display: block;
-	text-align: left;
-	margin-bottom: 5px;
+/* Section Headings for Job Form */
+.section-title {
+	background: var(--primary-light);
 	color: var(--primary-dark);
-	font-size: 0.9em;
-	font-weight: 600;
+	padding: 10px;
+	margin-top: 30px;
+	font-size: 1.1em;
+	border-radius: 5px;
 }
 
-input[type="email"],
-input[type="password"],
-input[type="text"] {
+/* Inputs */
+input[type="email"], input[type="password"], input[type="text"],
+input[type="number"], input[type="date"], select, textarea {
 	width: 100%;
 	padding: 12px;
-	margin-bottom: 20px;
+	margin-bottom: 15px;
 	border: 1px solid var(--primary-light);
 	border-radius: 5px;
 	box-sizing: border-box;
 	color: var(--primary-dark);
-	transition: border-color 0.3s ease;
+	font-size: 14px;
 }
 
-	/* Fix: Selectors for focus states */
-	input[type="email"]:focus,
-	input[type="password"]:focus,
-	input[type="text"]:focus {
+	input:focus, select:focus, textarea:focus {
 		border-color: var(--primary-color);
 		box-shadow: 0 0 5px var(--primary-light);
 		outline: none;
 	}
 
+/* Grid System for the Job Form */
+.grid-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 15px;
+}
 
+fieldset {
+	border: 1px solid var(--primary-light);
+	border-radius: 8px;
+	margin-bottom: 20px;
+	padding: 15px;
+	background: #fafcff;
+}
+
+legend {
+	font-weight: bold;
+	color: var(--primary-color);
+	padding: 0 10px;
+}
+
+/* Submit Button */
 input[type="submit"] {
 	background-color: var(--primary-color);
 	color: white;
@@ -87,47 +112,16 @@ input[type="submit"] {
 	font-weight: 700;
 	width: 100%;
 	text-transform: uppercase;
-	transition: background-color 0.3s ease, transform 0.1s ease;
 	box-shadow: 0 4px 6px var(--shadow-color);
 }
 
 	input[type="submit"]:hover {
 		background-color: var(--primary-dark);
-		box-shadow: 0 6px 10px var(--shadow-color);
 	}
 
-	input[type="submit"]:active {
-		transform: translateY(1px);
+/* Mobile Responsive */
+@media (max-width: 600px) {
+	.grid-row {
+		grid-template-columns: 1fr;
 	}
-
-
-p {
-	margin-top: 25px;
-	font-size: 0.9em;
-	color: var(--primary-dark);
-	clear: both;
-	text-align: center;
 }
-
-	p a {
-		color: var(--primary-color);
-		text-decoration: none;
-		font-weight: 600;
-		transition: color 0.3s ease;
-	}
-
-		p a:hover {
-			color: var(--primary-dark);
-			text-decoration: underline;
-		}
-
-	p[style*="color:red"] {
-		font-weight: 600;
-		color: var(--error-color) !important;
-		border: 1px solid var(--error-color);
-		padding: 10px;
-		border-radius: 5px;
-		background-color: #ffe6e6;
-		margin-bottom: 20px;
-		clear: both; 
-	}
