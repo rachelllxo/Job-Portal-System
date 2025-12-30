@@ -2,29 +2,37 @@
 session_start();
 require 'db_connection.php';
 
-$message='';
-if ($_SERVER['REQUEST_METHOD']=='POST'){
-    $email=trim($_POST['email']);
-    $password=$_POST['password'];
+$message = '';
 
-    $sql="SELECT id,email, password FROM users WHERE email=?";
-    $stmt=$pdo->prepare($sql);
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+
+    // 1. Fetch user by email
+    $sql = "SELECT id, email, password FROM users WHERE email = ?";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([$email]);
+    $user = $stmt->fetch();
 
-    $user=$stmt->fetch();
-
-    if($user){
-    if(password_verify($password,$user['password'])){
-    $_SESSION['email']=$user['email'];
-    }
-    header ('Location: dashboard.php');
-    exit;
+    if ($user) {
+        // 2. Verify password
+        if (password_verify($password, $user['password'])) {
+            
+            // 3. SET THE SESSION DATA CORRECTLY
+            $_SESSION['user_id'] = $user['id']; 
+            $_SESSION['email'] = $user['email'];
+            
+            // 4. Redirect to apply.php (or dashboard.php if you prefer)
+            header('Location: apply.php');
+            exit;
+        } else {
+            $message = "Invalid email or password.";
+        }
     } else {
-    $message="Invalid email or password.";
+        $message = "Invalid email or password.";
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
