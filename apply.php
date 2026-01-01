@@ -77,6 +77,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         ];
 
         // 4. Database Insert
+        // Capture the job_id from the URL or a hidden input field
+$data['job_id'] = $_POST['job_id'] ?? NULL;
+
+        // 5. Dynamic Database Insert (The clean way)
         $columns = implode(", ", array_keys($data));
         $placeholders = implode(", ", array_fill(0, count($data), "?"));
         $sql = "INSERT INTO applications ($columns) VALUES ($placeholders)";
@@ -262,7 +266,8 @@ $pdf->Cell(95, 7, 'Date: ' . $data['app_date'], 0, 1, 'R');
         <?php if($message) echo "<p style='color:green; font-weight:bold;'>$message</p>"; ?>
 
         <form action="apply.php" method="POST" enctype="multipart/form-data">
-            
+    <input type="hidden" name="job_id" value="<?php echo htmlspecialchars($_GET['job_id'] ?? ''); ?>">
+            <input type="hidden" name="job_id" value="<?php echo htmlspecialchars($_GET['job_id'] ?? ''); ?>">
             <h3 class="section-title">1. Personal Information</h3>
             <div class="grid-row">
                 <input type="text" name="full_name" placeholder="Name in full (Block Letters)" required>
