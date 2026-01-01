@@ -1,35 +1,44 @@
 <?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 session_start();
 require 'db_connection.php';
+require 'fpdf.php'; 
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
 
+$message = "";
+// Load .env variables (Ensure you have the loadEnv function in db_connection.php)
 
-
-$message = '';
+// 1. SECURITY CHECK: Prevent "user_id cannot be null" error
+if (!isset($_SESSION['user_id'])) {
+    die("Error: Your session has expired or you are not logged in. Please log in again to submit the form.");
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $target_dir = "uploads/";
     if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
 
-    // Handle Signature Upload
+    // 1. Handle File Uploads
     $sig_name = time() . "_sig_" . basename($_FILES["signature"]["name"]);
     $sig_path = $target_dir . $sig_name;
-    
-    // Handle Photo Upload
     $photo_name = time() . "_photo_" . basename($_FILES["passport_photo"]["name"]);
     $photo_path = $target_dir . $photo_name;
 
     if (move_uploaded_file($_FILES["signature"]["tmp_name"], $sig_path) && 
         move_uploaded_file($_FILES["passport_photo"]["tmp_name"], $photo_path)) {
         
-        // Handle Dynamic Employment (Converting arrays to JSON string)
+        // 2. Handle Dynamic Employment
         $jobs = [];
         if (isset($_POST['emp_org'])) {
             foreach ($_POST['emp_org'] as $key => $val) {
                 if (!empty($val)) {
                     $jobs[] = [
-                        'org' => $val,
+                        'org' => $val, 
                         'from' => $_POST['emp_from'][$key],
-                        'to' => $_POST['emp_to'][$key],
+                        'to' => $_POST['emp_to'][$key], 
                         'pos' => $_POST['emp_pos'][$key],
                         'type' => $_POST['emp_type'][$key]
                     ];
@@ -37,8 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
+        // 3. Prepare Data Array
         $data = [
-            'user_id'           => $_SESSION['user_id'],
+            'user_id'           => $_SESSION['user_id'] ?? NULL,
             'photo_path'        => $photo_path,
             'full_name'         => $_POST['full_name'],
             'father_name'       => $_POST['father_name'],
@@ -51,37 +61,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'dob'               => $_POST['dob'],
             'age'               => $_POST['age'],
             'category'          => $_POST['category'],
-            
-            // Education
-            'edu10_name' => $_POST['edu10_name'], 'edu10_from' => $_POST['edu10_from'], 'edu10_to' => $_POST['edu10_to'],
-            'edu10_marks' => $_POST['edu10_marks'], 'edu10_total' => $_POST['edu10_total'], 'edu10_perc' => $_POST['edu10_perc'], 'edu10_board' => $_POST['edu10_board'],
-            
-            'edu12_name' => $_POST['edu12_name'], 'edu12_from' => $_POST['edu12_from'], 'edu12_to' => $_POST['edu12_to'],
-            'edu12_marks' => $_POST['edu12_marks'], 'edu12_total' => $_POST['edu12_total'], 'edu12_perc' => $_POST['edu12_perc'], 'edu12_board' => $_POST['edu12_board'],
-            
-            'ug_name' => $_POST['graduation_name'], 'ug_from' => $_POST['ug_from'], 'ug_to' => $_POST['ug_to'],
-            'ug_marks' => $_POST['graduation_marks'], 'ug_total' => $_POST['graduation_total'], 'ug_perc' => $_POST['graduation_perc'], 'ug_board' => $_POST['graduation_board'],
-            
-            'pg_name' => $_POST['post_graduation_name'], 'pg_from' => $_POST['pg_from'], 'pg_to' => $_POST['pg_to'],
-            'pg_marks' => $_POST['post_graduation_marks'], 'pg_total' => $_POST['post_graduation_total'], 'pg_perc' => $_POST['post_graduation_perc'], 'pg_board' => $_POST['post_graduation_board'],
-            
-            'mphil_name' => $_POST['mphil_name'], 'mphil_from' => $_POST['mphil_from'], 'mphil_to' => $_POST['mphil_to'],
-            'mphil_marks' => $_POST['mphil_marks'], 'mphil_total' => $_POST['mphil_total'], 'mphil_perc' => $_POST['mphil_perc'], 'mphil_board' => $_POST['mphil_board'],
-            
-            'phd_name' => $_POST['phd_name'], 'phd_from' => $_POST['phd_from'], 'phd_to' => $_POST['phd_to'],
-            'phd_marks' => $_POST['phd_marks'], 'phd_total' => $_POST['phd_total'], 'phd_perc' => $_POST['phd_perc'], 'phd_board' => $_POST['phd_board'],
-            
-            // Employment stored as JSON
-            'employment_json' => json_encode($jobs),
-            
-            // Relatives & Misc
-            'rel_name' => $_POST['rel_name'], 'rel_design' => $_POST['rel_design'], 'rel_div' => $_POST['rel_div'], 'rel_relation' => $_POST['rel_relation'],
-            'other_details' => $_POST['other-details'],
+            'edu10_board' => $_POST['edu10_board'], 'edu10_to' => $_POST['edu10_to'], 'edu10_perc' => $_POST['edu10_perc'],
+            'edu12_board' => $_POST['edu12_board'], 'edu12_to' => $_POST['edu12_to'], 'edu12_perc' => $_POST['edu12_perc'],
+            'ug_board' => $_POST['graduation_board'], 'ug_to' => $_POST['ug_to'], 'ug_perc' => $_POST['graduation_perc'],
+            'pg_board' => $_POST['post_graduation_board'] ?? '', 
+            'pg_to' => $_POST['pg_to'] ?? '', 
+            'pg_perc' => $_POST['post_graduation_perc'] ?? '',
+            'mphil_name' => $_POST['mphil_name'], 'mphil_board' => $_POST['mphil_board'], 'mphil_to' => $_POST['mphil_to'], 'mphil_perc' => $_POST['mphil_perc'],
+            'phd_name' => $_POST['phd_name'], 'phd_board' => $_POST['phd_board'], 'phd_to' => $_POST['phd_to'], 'phd_perc' => $_POST['phd_perc'],
+            'employment_json'   => json_encode($jobs),
+            'rel_name' => $_POST['rel_name'], 'rel_relation' => $_POST['rel_relation'],
             'under_bond' => $_POST['under_bond'], 'dismissed' => $_POST['dismissed'],
             'app_place' => $_POST['app_place'], 'app_date' => $_POST['app_date'],
-            'signature_path' => $sig_path
+            'signature_path'    => $sig_path
         ];
 
+        // 4. Database Insert
         $columns = implode(", ", array_keys($data));
         $placeholders = implode(", ", array_fill(0, count($data), "?"));
         $sql = "INSERT INTO applications ($columns) VALUES ($placeholders)";
@@ -89,14 +84,161 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
             $stmt = $pdo->prepare($sql);
             $stmt->execute(array_values($data));
-            $message = "Application submitted successfully!";
-        } catch (PDOException $e) {
-            $message = "Database Error: " . $e->getMessage();
+
+            // 5. Generate PDF
+            $pdf = new FPDF();
+            $pdf->AddPage();
+            
+            $pdf->SetFont('Arial', 'B', 14);
+            $pdf->Cell(190, 10, 'CSIR - 4th Paradigm Institute, Bengaluru', 0, 1, 'C');
+            $pdf->SetFont('Arial', '', 11);
+            $pdf->Cell(190, 7, 'Application Summary - 2025', 0, 1, 'C');
+            $pdf->Line(10, 28, 200, 28);
+            
+            if(file_exists($photo_path)) $pdf->Image($photo_path, 160, 32, 30, 35);
+            
+            $pdf->Ln(15);
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->SetFillColor(230, 230, 230);
+            $pdf->Cell(190, 8, ' PERSONAL DETAILS', 0, 1, 'L', true);
+            $pdf->SetFont('Arial', '', 10);
+            $pdf->Ln(2);
+            $pdf->Cell(40, 7, 'Full Name:', 0); $pdf->Cell(100, 7, strtoupper($data['full_name']), 0, 1);
+            $pdf->Cell(40, 7, 'Father/Husband Name:', 0); $pdf->Cell(100, 7, strtoupper($data['father_name']), 0, 1);
+            $pdf->Cell(40, 7, 'Sex:', 0); $pdf->Cell(100, 7, strtoupper($data['sex']), 0, 1);
+            $pdf->Cell(40, 7, 'Nationality:', 0); $pdf->Cell(100, 7, strtoupper($data['nationality']), 0, 1);
+            $pdf->Cell(40, 7,'Mailing Address:', 0); $pdf->Cell(100, 7, strtoupper($data['mailing_address']), 0, 1);
+            $pdf->Cell(40, 7, 'Mobile Number:', 0); $pdf->Cell(100, 7, strtoupper($data['mobile_number']), 0, 1);
+            $pdf->Cell(40, 7, 'Email:', 0); $pdf->Cell(100, 7, $data['email_id'], 0, 1);
+            $pdf->Cell(40, 7, 'Permanent Address:', 0); $pdf->Cell(100, 7, strtoupper($data['permanent_address']), 0, 1);
+            $pdf->Cell(40, 7, 'Date of Birth:', 0); $pdf->Cell(100, 7, strtoupper($data['dob']), 0, 1);
+            $pdf->Cell(40, 7, 'Age:', 0); $pdf->Cell(100, 7, strtoupper($data['age']), 0, 1);
+            $pdf->Cell(40, 7, 'Category:', 0); $pdf->Cell(100, 7, strtoupper($data['category']), 0, 1);
+
+            // Education Table
+            $pdf->Ln(5);
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->Cell(190, 8, ' EDUCATIONAL QUALIFICATIONS', 0, 1, 'L', true);
+            $pdf->SetFont('Arial', 'B', 9);
+            $pdf->Cell(30, 7, 'Exam', 1); $pdf->Cell(80, 7, 'Board/Univ', 1); $pdf->Cell(30, 7, 'Year', 1); $pdf->Cell(50, 7, 'Result', 1); $pdf->Ln();
+            
+            $pdf->SetFont('Arial', '', 9);
+            $pdf->Cell(30, 7, '10th', 1); $pdf->Cell(80, 7, $data['edu10_board'], 1); $pdf->Cell(30, 7, $data['edu10_to'], 1); $pdf->Cell(50, 7, $data['edu10_perc'].'%', 1); $pdf->Ln();
+            $pdf->Cell(30, 7, '12th', 1); $pdf->Cell(80, 7, $data['edu12_board'], 1); $pdf->Cell(30, 7, $data['edu12_to'], 1); $pdf->Cell(50, 7, $data['edu12_perc'].'%', 1); $pdf->Ln();
+$pdf->Cell(30, 7, 'UG', 1); 
+$pdf->MultiCell(90, 5, $data['ug_board'], 1); // This moves the cursor to the next line
+$pdf->Cell(30, 7, $data['ug_to'], 1); // This starts on a new line            
+            if(!empty($data['pg_board'])) {
+                $pdf->Cell(30, 7, 'PG', 1); $pdf->Cell(80, 7, $data['pg_board'], 1); $pdf->Cell(30, 7, $data['pg_to'], 1); $pdf->Cell(50, 7, $data['pg_perc'].'%', 1); $pdf->Ln();
+            }
+            if(!empty($data['mphil_board'])) {
+                $pdf->Cell(30, 7, 'MPHil', 1); $pdf->Cell(80, 7, $data['mphil_board'], 1); $pdf->Cell(30, 7, $data['mphil_to'], 1); $pdf->Cell(50, 7, $data['mphil_perc'].'%', 1); $pdf->Ln();
+            }
+            if(!empty($data['phd_board'])) {
+                $pdf->Cell(30, 7, 'PhD', 1); $pdf->Cell(80, 7, $data['phd_board'], 1); $pdf->Cell(30, 7, $data['phd_to'], 1); $pdf->Cell(50, 7, $data['phd_perc'].'%', 1); $pdf->Ln();
+            }
+
+            // Employment Table
+            $pdf->Ln(5);
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->Cell(190, 8, ' EMPLOYMENT HISTORY', 0, 1, 'L', true);
+            $pdf->SetFont('Arial', 'B', 9);
+            $pdf->Cell(60, 7, 'Organization', 1); $pdf->Cell(40, 7, 'Duration', 1); $pdf->Cell(50, 7, 'Designation', 1); $pdf->Cell(40, 7, 'Type', 1); $pdf->Ln();
+            $pdf->SetFont('Arial', '', 9);
+            foreach ($jobs as $job) {
+                $pdf->Cell(60, 7, $job['org'], 1);
+                $pdf->Cell(40, 7, $job['from'] . ' to ' . $job['to'], 1);
+                $pdf->Cell(50, 7, $job['pos'], 1);
+                $pdf->Cell(40, 7, $job['type'], 1);
+                $pdf->Ln();
+            }
+            $pdf->Ln(5);
+$pdf->SetFont('Arial', 'B', 12);
+$pdf->Cell(190, 8, ' 4. ADDITIONAL DETAILS', 0, 1, 'L', true);
+$pdf->SetFont('Arial', '', 9);
+
+// Question 1: Bond Obligation
+$pdf->MultiCell(190, 5, "Are you under any Bond/ Contractual obligation to serve Central /State Government /PSU /Autonomous or any other body /organization?: " . $data['under_bond'], 1, 'L');
+
+// Question 2: Dismissal
+$pdf->MultiCell(190, 5, "Whether dismissed from service from any other institution /office or debarred by the Public Service Commission? If Yes, give details: " . $data['dismissed'], 1, 'L');
+
+$pdf->Ln(5);
+
+// --- Section 5: Final Declaration ---
+$pdf->SetFont('Arial', 'B', 12);
+$pdf->Cell(190, 8, ' 5. DECLARATION', 0, 1, 'L', true);
+$pdf->SetFont('Arial', '', 9);
+
+$declarationText = "I hereby declare that all the statements made in this application are true, complete and correct to the best of my knowledge and belief.\n\nI understand that in the event of any information being found false or incorrect at any stage, my candidature/appointment shall be liable to be cancelled / terminated summarily without notice.";
+
+// Use MultiCell for the declaration text to handle wrapping [cite: 25, 26]
+$pdf->MultiCell(190, 5, $declarationText, 0, 'L');
+
+// --- Place and Date ---
+$pdf->Ln(5);
+$pdf->Cell(95, 7, 'Place: ' . strtoupper($data['app_place']), 0, 0, 'L');
+$pdf->Cell(95, 7, 'Date: ' . $data['app_date'], 0, 1, 'R');
+            // Signature
+            $pdf->Ln(15);
+            if(file_exists($sig_path)) $pdf->Image($sig_path, 150, $pdf->GetY(), 40, 15);
+            $pdf->Ln(16);
+            $pdf->Cell(140, 7, '', 0); $pdf->Cell(50, 7, 'Candidate Signature', 0, 1, 'C');
+
+            $pdf_content = $pdf->Output('S'); 
+
+            // 6. Send Email
+            // 6. Send Email
+            $mail = new PHPMailer(true);
+
+            // Add a check to see if email is actually there
+            if (empty($data['email_id'])) {
+                throw new Exception("Email address is missing from the form submission.");
+            }
+
+            // --- Server Settings ---
+            $mail->SMTPDebug = 0; // Keep this until you confirm it works, then change to 0
+            $mail->isSMTP();
+            $mail->Host       = $_ENV['SMTP_HOST'];
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $_ENV['SMTP_USER']; 
+            $mail->Password   = $_ENV['SMTP_PASS'];    
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = $_ENV['SMTP_PORT'];
+            $mail->SMTPOptions = array(
+    'ssl' => array(
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+        'allow_self_signed' => true
+    )
+);
+            // --- Recipients & Content ---
+            $mail->setFrom($_ENV['SMTP_USER'], 'CSIR-4PI Recruitment');
+            $mail->addAddress($data['email_id'], $data['full_name']);
+            $mail->addStringAttachment($pdf_content, 'Application_Summary.pdf');
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Confirmation: Application Submitted Successfully';
+            $mail->Body    = "Dear <b>{$data['full_name']}</b>,<br><br>Your application has been received. Please find your summary attached.";
+
+            // --- Send It ---
+            $mail->send();
+
+            // Store data for success page
+            $_SESSION['submitted_name'] = $data['full_name'];
+            $_SESSION['submitted_email'] = $data['email_id'];
+
+            header("Location: success.php");
+            exit();
+
+        } catch (Exception $e) {
+            $message = "Error: " . $e->getMessage();
         }
     } else {
-        $message = "Failed to upload files.";
-    }
-}
+        $message = "Error: Failed to upload signature or photo.";
+    } 
+} 
+?>
 ?>
 
 <!DOCTYPE html>
@@ -200,6 +342,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="text" name="graduation_board" placeholder="University">
                 </div>
             </fieldset>
+                    <fieldset>
+            <legend>Post Graduation</legend>
+            <input type="text" name="post_graduation_name" placeholder="Course Name (e.g. M.Sc, M.Tech, MCA)">
+            <div class="grid-row" style="margin-top: 10px;">
+                <input type="text" name="pg_from" placeholder="From (Year)">
+                <input type="text" name="pg_to" placeholder="To (Year)">
+            </div>
+            <div class="grid-row">
+                <input type="number" name="post_graduation_marks" placeholder="Marks Obtained">
+                <input type="number" name="post_graduation_total" placeholder="Total Marks">
+                <input type="text" name="post_graduation_perc" placeholder="Percentage / CGPA">
+                <input type="text" name="post_graduation_board" placeholder="University Name">
+            </div>
+        </fieldset>
+
+                            <fieldset>
+                    <legend>Higher Education </legend>
+                    <div class="grid-row">
+                        <input type="text" name="mphil_name" placeholder="M.Phil Course Name">
+                        <input type="text" name="mphil_board" placeholder="University">
+                        <input type="text" name="mphil_perc" placeholder="M.Phil %">
+                        <input type="text" name="mphil_to" placeholder="Year of Passing">
+                    </div>
+                    <div class="grid-row" style="margin-top: 10px;">
+                        <input type="text" name="phd_name" placeholder="Ph.D Course Name">
+                        <input type="text" name="phd_board" placeholder="University">
+                        <input type="text" name="phd_perc" placeholder="Ph.D %">
+                        <input type="text" name="phd_to" placeholder="Year of Passing">
+                    </div>
+                </fieldset>
 
             <h3 class="section-title">3. Details Of Employment</h3>
             <div id="employment-container">
@@ -263,3 +435,5 @@ I understand that in the event of any information being found false or incorrect
     </script>
 </body>
 </html>
+
+        
